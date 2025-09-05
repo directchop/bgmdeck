@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+# Required to create GitHub Releases with GITHUB_TOKEN
+permissions:
+  contents: write
+
 env:
   APP_NAME: BGM Deck
   APP_PATH: bgm_deck/target/release/bundle/osx/BGM Deck.app
