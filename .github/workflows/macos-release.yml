@@ -137,5 +137,52 @@ jobs:
           files: |
             ${{ env.APP_ZIP }}
             ${{ env.APP_DMG }}
+          body_path: RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            bgm_deck -> target
+
+      - name: Build (Windows, release)
+        working-directory: bgm_deck
+        run: cargo build --release
+
+      - name: Package ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dist = "bgm_deck/target/release/dist"
+          if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
+          New-Item -Force -ItemType Directory $dist | Out-Null
+          Copy-Item "bgm_deck/target/release/bgm_deck.exe" "$dist/BGM Deck.exe"
+          if (Test-Path "README.md") { Copy-Item "README.md" "$dist/README.md" }
+          Compress-Archive -Path "$dist/*" -DestinationPath "bgm_deck/target/release/BGM Deck Windows.zip" -Force
+
+      - name: Upload artifact (Windows ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BGM-Deck-Windows
+          path: |
+            bgm_deck/target/release/BGM Deck Windows.zip
+
+      - name: Upload to GitHub Release (Windows)
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            bgm_deck/target/release/BGM Deck Windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
