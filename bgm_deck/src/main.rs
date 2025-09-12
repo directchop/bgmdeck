@@ -21,6 +21,7 @@ struct AppConfig {
     crossfade_sec: f32,
     output_device_name: Option<String>,
     master_volume: f32,
+    sample_rate: Option<u32>,
 }
 
 impl Default for AppConfig {
@@ -35,6 +36,7 @@ impl Default for AppConfig {
             crossfade_sec: 2.0,
             output_device_name: None,
             master_volume: 1.0,
+            sample_rate: None,
         }
     }
 }
@@ -44,6 +46,27 @@ fn load_source(path: &str) -> anyhow::Result<rodio::Decoder<BufReader<File>>> {
     let reader = BufReader::new(file);
     let dec = rodio::Decoder::new(reader)?; // mp3/wav対応（rodio経由でSymphonia）
     Ok(dec)
+}
+
+fn create_output_stream_with_sample_rate(
+    device: &cpal::Device,
+    sample_rate: Option<u32>,
+) -> Result<(rodio::OutputStream, rodio::OutputStreamHandle), rodio::StreamError> {
+    if let Some(rate) = sample_rate {
+        // Get supported configs and try to find one matching our desired sample rate
+        if let Ok(mut configs) = device.supported_output_configs() {
+            if let Some(config) = configs.find(|c| {
+                c.min_sample_rate().0 <= rate && c.max_sample_rate().0 >= rate
+            }) {
+                // Create a config with the specified sample rate
+                let config = config.with_sample_rate(cpal::SampleRate(rate));
+                return rodio::OutputStream::try_from_device_config(device, config);
+            }
+        }
+    }
+    
+    // Fall back to default config
+    rodio::OutputStream::try_from_device(device)
 }
 
 fn crossfade(
@@ -115,7 +138,7 @@ impl App {
 
         // 選択デバイスでストリーム生成（なければデフォルト）
         let (stream, handle) = if let Some(dev) = selected_device {
-            rodio::OutputStream::try_from_device(&dev)
+            create_output_stream_with_sample_rate(&dev, cfg.sample_rate)
                 .unwrap_or_else(|_| rodio::OutputStream::try_default().unwrap())
         } else {
             rodio::OutputStream::try_default().unwrap()
@@ -176,7 +199,7 @@ impl App {
         match host.output_devices() {
             Ok(mut list) => {
                 if let Some(dev) = list.nth(idx) {
-                    match rodio::OutputStream::try_from_device(&dev) {
+                    match create_output_stream_with_sample_rate(&dev, self.cfg.sample_rate) {
                         Ok((stream, handle)) => {
                             let mut a = self.audio.lock();
                             if let Some((s, _, stop_flag)) = a.current_sink.take() {
@@ -202,6 +225,12 @@ impl App {
                 self.error_message = Some(format!("デバイス列挙に失敗: {e}"));
             }
         }
+    }
+    
+    fn apply_sample_rate(&mut self) {
+        // Re-create the stream with the new sample rate
+        let idx = self.audio.lock().current_device_idx;
+        self.switch_device(idx);
     }
 
     fn play_slot(&mut self, slot_idx: usize) {
@@ -272,6 +301,35 @@ impl App {
         if let Some((s, _, stop_flag)) = a.current_sink.take() {
             stop_flag.store(true, Ordering::Relaxed);
             s.stop();
+        }
+    }
+
+    fn stop_with_fadeout(&mut self) {
+        let fade_time = self.cfg.crossfade_sec.max(0.01);
+        let audio = self.audio.lock();
+        if let Some((sink, _, stop_flag)) = &audio.current_sink {
+            let sink_clone = sink.clone();
+            let stop_flag_clone = stop_flag.clone();
+            let audio_arc = self.audio.clone();
+            
+            thread::spawn(move || {
+                let start_vol = sink_clone.volume();
+                let steps = ((fade_time * 1000.0) / 20.0).max(1.0) as u32;
+                
+                for i in 0..=steps {
+                    if stop_flag_clone.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let t = i as f32 / steps as f32;
+                    let vol = start_vol * (1.0 - t);
+                    sink_clone.set_volume(vol.max(0.0));
+                    thread::sleep(Duration::from_millis(20));
+                }
+                
+                sink_clone.stop();
+                let mut a = audio_arc.lock();
+                a.current_sink = None;
+            });
         }
     }
 
@@ -412,6 +470,9 @@ impl eframe::App for App {
                 if ui.button("Stop").clicked() {
                     self.stop_current();
                 }
+                if ui.button("Stop (Fade)").clicked() {
+                    self.stop_with_fadeout();
+                }
                 if ui.button("Clear All").clicked() {
                     self.stop_current();
                     for s in &mut self.cfg.slots {
@@ -539,6 +600,39 @@ impl eframe::App for App {
                     }
                     self.save_cfg();
                 }
+                
+                ui.separator();
+                
+                // サンプリングレート選択
+                ui.label("Sample Rate");
+                let sample_rates = [
+                    ("Auto", None),
+                    ("44.1 kHz", Some(44100)),
+                    ("48 kHz", Some(48000)),
+                    ("88.2 kHz", Some(88200)),
+                    ("96 kHz", Some(96000)),
+                    ("192 kHz", Some(192000)),
+                ];
+                
+                let current_text = sample_rates
+                    .iter()
+                    .find(|(_, rate)| *rate == self.cfg.sample_rate)
+                    .map(|(text, _)| *text)
+                    .unwrap_or("Auto");
+                
+                egui::ComboBox::from_label("")
+                    .selected_text(current_text)
+                    .show_ui(ui, |ui| {
+                        for (text, rate) in &sample_rates {
+                            if ui.selectable_label(self.cfg.sample_rate == *rate, *text).clicked() {
+                                if self.cfg.sample_rate != *rate {
+                                    self.cfg.sample_rate = *rate;
+                                    self.save_cfg();
+                                    self.apply_sample_rate();
+                                }
+                            }
+                        }
+                    });
             });
         });
     }
