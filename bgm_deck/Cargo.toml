@@ -1,0 +1,24 @@
+[package]
+name = "bgm_deck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = { version = "0.27", features = ["persistence"] }
+egui = "0.27"
+rodio = "0.17"
+cpal = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+confy = "0.6"
+anyhow = "1.0"
+parking_lot = "0.12"
+rfd = "0.15"
+
+[package.metadata.bundle]
+# Reverse-DNS style identifier for AtelierWorks
+name = "BGM Deck"
+identifier = "com.atelierworks.bgmdeck"
+category = "Music"
+short_description = "10-slot BGM player with crossfade"
+long_description = "A 10-slot BGM player built with egui/eframe + rodio, featuring per-slot volume, output device selection, and crossfade playback."
+osx_minimum_system_version = "10.13"

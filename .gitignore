@@ -1,0 +1,11 @@
+# Rust build artifacts
+bgm_deck/target/
+
+# macOS
+.DS_Store
+
+# Security artifacts (do not commit)
+*.p12
+*.p8
+asc_key.p8
+*.mobileprovision
