@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1f26"/>
+      <stop offset="1" stop-color="#0b0c10"/>
+    </linearGradient>
+    <linearGradient id="hot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff7a18"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <g fill="#2e323c">
+    <rect x="176" y="176" width="200" height="200" rx="40"/>
+    <rect x="412" y="176" width="200" height="200" rx="40"/>
+    <rect x="648" y="176" width="200" height="200" rx="40"/>
+    <rect x="176" y="412" width="200" height="200" rx="40"/>
+    <rect x="648" y="412" width="200" height="200" rx="40"/>
+    <rect x="176" y="648" width="200" height="200" rx="40"/>
+    <rect x="412" y="648" width="200" height="200" rx="40"/>
+    <rect x="648" y="648" width="200" height="200" rx="40"/>
+  </g>
+  <rect x="412" y="412" width="200" height="200" rx="40" fill="url(#hot)"/>
+  <path d="M470 452 L470 572 L580 512 Z" fill="#1a1205"/>
+</svg>

@@ -1,11 +1,20 @@
-# Rust build artifacts
-bgm_deck/target/
+node_modules/
+dist/
+target/
+.vite/
+*.log
 
-# macOS
-.DS_Store
-
-# Security artifacts (do not commit)
+# Signing material (never commit)
 *.p12
 *.p8
 asc_key.p8
-*.mobileprovision
+
+# macOS
+.DS_Store
+._*
+
+# Claude Code worktrees / local state
+.claude/
+
+# Tauri generated
+src-tauri/gen/schemas/
