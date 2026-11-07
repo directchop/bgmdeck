@@ -1,0 +1,139 @@
+name: Release
+
+# Push a `v*` tag to build installers for macOS / Windows / Linux and attach
+# them to a draft GitHub Release. Pull requests that touch this file run the
+# same matrix as a build check without publishing anything.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths: [".github/workflows/release.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            rust_targets: aarch64-apple-darwin
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            rust_targets: x86_64-apple-darwin
+          - platform: windows-latest
+            args: ""
+            rust_targets: ""
+          - platform: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - run: npm test
+
+      # Code signing / notarization secrets (see docs/DISTRIBUTION.md). Only
+      # exported when set: Tauri treats an empty APPLE_CERTIFICATE as "sign
+      # with this" and fails the bundle step.
+      - name: Export code-signing secrets when present
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD; do
+            if [ -n "${!v}" ]; then
+              { echo "$v<<__BD_SECRET__"; echo "${!v}"; echo "__BD_SECRET__"; } >> "$GITHUB_ENV"
+              echo "$v: set"
+            else
+              echo "$v: not set (unsigned build)"
+            fi
+          done
+
+      # In-app updates need signed updater bundles. Without the signing key
+      # (e.g. on forks / PR checks) build plain installers instead of failing.
+      - name: Updater signing key check
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo '{"bundle":{"createUpdaterArtifacts":false}}' > "$RUNNER_TEMP/no-updater.json"
+            echo "EXTRA_TAURI_ARGS=--config $RUNNER_TEMP/no-updater.json" >> "$GITHUB_ENV"
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY is not set; this release will not be offered as an in-app update."
+          fi
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          includeUpdaterJson: true
+          tagName: ${{ github.event_name == 'push' && github.ref_name || '' }}
+          releaseName: BGM Deck ${{ github.ref_name }}
+          releaseBody: See the assets below to download and install this version.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }} ${{ env.EXTRA_TAURI_ARGS }}
+
+  # After every platform built, push installers + latest.json to the R2
+  # bucket behind the update feed (updates-worker/). Skipped on PR checks and
+  # when the Cloudflare secrets are not set; scripts/publish-updates.sh does
+  # the same thing from a laptop with `wrangler login`.
+  publish-updates:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Publish to the update feed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set; run scripts/publish-updates.sh ${{ github.ref_name }} by hand."
+            exit 0
+          fi
+          channel=stable
+          case "${{ github.ref_name }}" in *-*) channel=beta;; esac
+          scripts/publish-updates.sh "${{ github.ref_name }}" "$channel"

@@ -1,0 +1,12 @@
+# Update feed for the Tauri updater. Deploy: `npx wrangler deploy` in this
+# folder (needs `wrangler login`), after `npx wrangler r2 bucket create bgmdeck-updates`.
+name = "bgmdeck-updates"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[r2_buckets]]
+binding = "UPDATES"
+bucket_name = "bgmdeck-updates"
+
+[observability]
+enabled = true

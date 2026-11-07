@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262a33"/>
+      <stop offset="1" stop-color="#0d0f13"/>
+    </linearGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3f4b"/>
+      <stop offset="0.5" stop-color="#23272f"/>
+      <stop offset="1" stop-color="#1a1d23"/>
+    </linearGradient>
+    <linearGradient id="label" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f3efe6"/>
+      <stop offset="1" stop-color="#e2dccf"/>
+    </linearGradient>
+    <linearGradient id="stripeA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff9f1c"/>
+      <stop offset="1" stop-color="#ff7a18"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.03"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="tape" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4a3b2a"/>
+      <stop offset="0.75" stop-color="#2a2118"/>
+      <stop offset="1" stop-color="#17120d"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="inner" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <clipPath id="window"><rect x="312" y="414" width="400" height="150" rx="40"/></clipPath>
+  </defs>
+
+  <!-- tile -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+
+  <!-- cassette shell -->
+  <g filter="url(#shadow)">
+    <rect x="152" y="268" width="720" height="488" rx="46" fill="url(#shell)"/>
+  </g>
+  <rect x="152" y="268" width="720" height="488" rx="46" fill="none" stroke="#4b515e" stroke-width="4"/>
+
+  <!-- label -->
+  <rect x="190" y="304" width="644" height="290" rx="26" fill="url(#label)" filter="url(#inner)"/>
+  <rect x="190" y="304" width="644" height="52" rx="26" fill="url(#stripeA)"/>
+  <rect x="190" y="336" width="644" height="20" fill="url(#stripeA)"/>
+  <rect x="190" y="366" width="644" height="14" fill="#2a2118" opacity="0.85"/>
+  <!-- handwritten-ish title line -->
+  <rect x="236" y="400" width="300" height="10" rx="5" fill="#2a2118" opacity="0.35"/>
+  <rect x="236" y="422" width="190" height="10" rx="5" fill="#2a2118" opacity="0.25"/>
+  <text x="788" y="416" text-anchor="end" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="44" fill="#2a2118" opacity="0.8">A</text>
+
+  <!-- tape window -->
+  <rect x="312" y="414" width="400" height="150" rx="40" fill="#0e1014"/>
+  <g clip-path="url(#window)">
+    <!-- tape packs -->
+    <circle cx="392" cy="489" r="98" fill="url(#tape)"/>
+    <circle cx="632" cy="489" r="62" fill="url(#tape)"/>
+    <!-- tape path between hubs -->
+    <rect x="392" y="552" width="240" height="14" fill="#1b140e"/>
+  </g>
+  <rect x="312" y="414" width="400" height="150" rx="40" fill="none" stroke="#111318" stroke-width="6"/>
+
+  <!-- hubs -->
+  <g fill="#eef0f3" stroke="#9aa1ae" stroke-width="3">
+    <circle cx="392" cy="489" r="40"/>
+    <circle cx="632" cy="489" r="40"/>
+  </g>
+  <g fill="#1a1d23">
+    <g transform="translate(392 489)">
+      <rect x="-5" y="-30" width="10" height="16" rx="2"/><rect x="-5" y="14" width="10" height="16" rx="2"/>
+      <rect x="-30" y="-5" width="16" height="10" rx="2"/><rect x="14" y="-5" width="16" height="10" rx="2"/>
+      <rect x="-5" y="-30" width="10" height="16" rx="2" transform="rotate(60)"/><rect x="-5" y="14" width="10" height="16" rx="2" transform="rotate(60)"/>
+      <rect x="-5" y="-30" width="10" height="16" rx="2" transform="rotate(-60)"/><rect x="-5" y="14" width="10" height="16" rx="2" transform="rotate(-60)"/>
+      <circle r="12"/>
+    </g>
+    <g transform="translate(632 489)">
+      <rect x="-5" y="-30" width="10" height="16" rx="2"/><rect x="-5" y="14" width="10" height="16" rx="2"/>
+      <rect x="-30" y="-5" width="16" height="10" rx="2"/><rect x="14" y="-5" width="16" height="10" rx="2"/>
+      <rect x="-5" y="-30" width="10" height="16" rx="2" transform="rotate(60)"/><rect x="-5" y="14" width="10" height="16" rx="2" transform="rotate(60)"/>
+      <rect x="-5" y="-30" width="10" height="16" rx="2" transform="rotate(-60)"/><rect x="-5" y="14" width="10" height="16" rx="2" transform="rotate(-60)"/>
+      <circle r="12"/>
+    </g>
+  </g>
+
+  <!-- lower shell: trapezoid head area -->
+  <path d="M286 756 L326 652 L698 652 L738 756 Z" fill="#15181e" stroke="#3a3f4b" stroke-width="4"/>
+  <rect x="440" y="686" width="144" height="34" rx="10" fill="#0b0d10"/>
+  <circle cx="368" cy="716" r="12" fill="#0b0d10"/>
+  <circle cx="656" cy="716" r="12" fill="#0b0d10"/>
+  <!-- screws -->
+  <g fill="#0f1114" stroke="#4b515e" stroke-width="3">
+    <circle cx="196" cy="312" r="10"/><circle cx="828" cy="312" r="10"/>
+    <circle cx="196" cy="712" r="10"/><circle cx="828" cy="712" r="10"/>
+  </g>
+
+  <!-- gloss -->
+  <rect x="152" y="268" width="720" height="488" rx="46" fill="url(#gloss)"/>
+</svg>

@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #15171c;
+  --color-bg-dark: #0f1114;
+  --color-bg-darker: #0a0b0d;
+  --color-surface: #1d2027;
+  --color-surface-light: #262a33;
+  --color-border: #2f343f;
+  --color-border-light: #3d4350;
+  --color-text: #e6e8ec;
+  --color-text-dim: #8b919d;
+  --color-text-muted: #5a606c;
+  --color-accent: #ff9f1c;
+  --color-accent-dim: #b86f10;
+  --color-green: #4caf50;
+  --color-red: #f44336;
+  --color-yellow: #ffb300;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg-darker);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+input, textarea, select { user-select: text; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* Range inputs (faders) */
+input[type="range"].fader {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  outline: none;
+}
+input[type="range"].fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-text);
+  border: 2px solid var(--color-bg-dark);
+  box-shadow: 0 0 0 1px var(--color-border-light);
+  cursor: pointer;
+}
+input[type="range"].fader:disabled::-webkit-slider-thumb { background: var(--color-text-muted); }
+
+/* Pad press feedback */
+.pad:active { transform: scale(0.985); }
+
+/* Drag-over highlight set from the Tauri drag-drop handler */
+.pad[data-drag-over="true"] { outline: 2px dashed var(--color-accent); outline-offset: -2px; }
+
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.pulse-soft { animation: pulse-soft 1.2s ease-in-out infinite; }

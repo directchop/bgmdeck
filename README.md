@@ -1,109 +1,111 @@
 # BGM Deck
 
-This project (README and implementation) was created with Codex (Codex CLI).
+Pad-style background music player for live events — the walk-in music, the
+dinner set, the interval, the bows. Ten pads per bank, as many banks as the
+show needs, sample-accurate crossfades, a Duck button for announcements, and
+OSC / MIDI control so the show PC (for example [playque](https://github.com/directchop/playque))
+can fade the music at the right moment.
 
-A 10-slot BGM player built with Rust + eframe/egui and rodio. Assign mp3/wav files per slot, play with a click, crossfade between slots, switch output devices, and persist all settings.
+Free and open source. macOS (Apple Silicon / Intel), Windows, Linux.
 
-## Features
-- 10 slots: assign mp3/wav via drag-and-drop or file dialog
-- Per-slot volume: 0.0–1.0 saved per slot
-- Output device selection: powered by `cpal/rodio`
-- Crossfade: linear with 20ms steps using `Sink::set_volume()`; old sink `stop()` after fade
-- Persistence: file paths, per-slot volume, output device name, crossfade seconds, master volume, slot names, and per‑slot looping via `confy`
-- macOS bundle: `.app` build, optional codesign/notarization, and DMG packaging via CI
+## What it does
 
-## Requirements
-- macOS (Intel/Apple Silicon)
-- Rust stable (≈1.70+)
-- Xcode Command Line Tools may be required: `xcode-select --install`
+- **Pads**: drop audio files on pads (WAV, AIFF, MP3, FLAC, AAC / M4A, OGG).
+  Name, colour, per-pad volume, loop on/off. Keys `1`–`9`, `0` play pads 1–10.
+- **Banks**: group pads by part of the show; `[` / `]` or OSC to switch.
+- **Streaming playback**: files of any length are decoded on the fly (a deck
+  with 80 one-hour tracks uses a few megabytes of RAM). Mono, stereo and
+  multichannel files all play; sample rates are converted to the device rate.
+- **Fades you can rely on**: crossfade between pads, fade in from silence,
+  Stop (fade) / Stop now, equal-power / linear / S-curve. All computed per
+  sample in the audio callback — no stepping, no zipper noise.
+- **Duck**: one key (`D`) lowers the music to a preset level for an MC and
+  brings it back.
+- **Output**: choose the audio device, sample rate, buffer size and which two
+  physical outputs carry the deck. Output meter in the header.
+- **Decks**: save / open `.bgmdeck` files; the working deck is restored on
+  relaunch; unsaved changes are guarded; missing files are flagged.
+- **Remote control**: OSC in (with state feedback out) and MIDI note input
+  with Learn. See *Remote control* below.
+- **Native menus**, keyboard shortcuts (`?` shows them all), in-app updates,
+  always-on log file (Help → Open Log Folder).
 
-## Setup
-```bash
-# If Rust is not installed
-brew install rustup-init && rustup-init -y
-source "$HOME/.cargo/env"
+## Remote control
 
-# Clone & run
-git clone git@github.com:directchop/bgmdeck.git
-cd bgmdeck/bgm_deck
-cargo run
+### OSC
+
+Enable *Settings → Remote → OSC receive* and pick a UDP port (default 9100).
+Pads and banks are numbered from 1 on the wire.
+
+| Address | Effect |
+| --- | --- |
+| `/bgmdeck/play <pad> [fade]` | Play pad 1–10 of the current bank |
+| `/bgmdeck/play/<pad> [fade]` | Same, pad in the address |
+| `/bgmdeck/bank/<bank>/play/<pad>` | Play a pad in another bank (switches to it) |
+| `/bgmdeck/stop [fade]` | Fade out (deck's Stop fade unless given) |
+| `/bgmdeck/stop/now` | Stop immediately |
+| `/bgmdeck/bank <bank>`, `/bgmdeck/bank/<bank>` | Switch bank |
+| `/bgmdeck/bank/next`, `/bgmdeck/bank/prev` | Step through banks |
+| `/bgmdeck/master <0..1>` | Master volume |
+| `/bgmdeck/pad/<pad>/volume <0..1>` | Pad volume (current bank) |
+| `/bgmdeck/duck <0\|1>`, `/bgmdeck/duck/on`, `/off`, `/toggle` | Duck |
+| `/bgmdeck/ping` | Replies `/bgmdeck/pong` to the sender |
+
+Feedback (to the *State feedback* targets, on every change and once a second
+while playing):
+
+```
+/bgmdeck/state  s state("stopped"|"playing"|"fading")  i bank  i pad  s name  f position  f duration
 ```
 
-## Usage
-- Drop mp3/wav onto a slot or click “Open…” to assign
-- Click “Play” to start; pressing a different slot’s “Play” crossfades to it
-- Adjust “CrossFade (sec)” at the top (auto-saved)
-- Select “Output Device” to change audio output (stops current sink and rebinds stream)
-- Long paths show filename only; hover to see the full path
-- Active slot is highlighted
-- Per-slot “Loop” checkbox (default on)
+**With playque**: add an OSC track whose target is the BGM Deck machine and
+port, then put `/bgmdeck/stop` on the cue where the show starts (or
+`/bgmdeck/play/3` to start the interval music from the timeline).
 
-### Shortcuts
-- `1`–`9`: play slot 1–9
-- `0`: stop playback
-- While typing in a text field, shortcuts are disabled
+### MIDI
 
-## Project Layout
-- `bgm_deck/Cargo.toml`: dependencies and bundle metadata (identifier: `com.atelierworks.bgmdeck`)
-- `bgm_deck/src/main.rs`: the entire app in one file
-- `bgm_deck/Makefile`: bundle/sign/notarize pipeline for local macOS builds
-- `.github/workflows/macos-release.yml`: CI to build/upload ZIP and DMG (unsigned by default; signs/notarizes if secrets exist)
+Pick an input under *Settings → Remote → MIDI*. Note On messages trigger pads,
+Stop, Stop now, Duck and bank changes; click *Learn* next to any row and press
+a key to bind it. Defaults follow a typical pad controller (note 36 = pad 1).
 
-## macOS App Bundle
-Build the `.app` with `cargo-bundle`:
+## Keyboard
+
+| Key | Action |
+| --- | --- |
+| `1`–`9`, `0` | Play pad (tap the playing pad again to fade it out; Shift restarts) |
+| `Space` / `Shift+Space` | Stop (fade) / Stop now |
+| `D` | Duck on / off |
+| `[` / `]` | Previous / next bank |
+| `Tab` | Pads ⇄ Settings |
+| `Enter`, `Delete` | Rename / clear the selected pad |
+| `⌘/Ctrl + S`, `O`, `N` | Save, Open, New deck |
+| `⌘/Ctrl + Z` | Undo (pads and settings) |
+| `?` | All shortcuts |
+
+## Development
+
 ```bash
-cd bgm_deck
-cargo install cargo-bundle
-cargo bundle --release
-# Output: target/release/bundle/osx/BGM\ Deck.app
-open "target/release/bundle/osx/BGM Deck.app"
+npm install
+npm run tauri dev        # app with hot reload
+npm test                 # frontend unit tests (node --test)
+cd src-tauri && cargo test
 ```
 
-## Release (CI)
-Pushing a tag `v*` triggers the GitHub Actions workflow which:
-1) Builds the `.app`
-2) Creates a ZIP and a DMG
-3) Uploads them as artifacts and release assets
+Stack: Tauri 2 (Rust) + React / TypeScript / Tailwind. Audio: cpal output,
+symphonia decoding on a thread per pad into a lock-free ring buffer, mixing
+and envelopes in `src-tauri/src/audio.rs`. OSC via rosc, MIDI via midir.
 
-By default (no secrets), releases are unsigned. Users must allow the first run via System Settings → Privacy & Security, or right-click Open.
+Releases are built by `.github/workflows/release.yml` on a `v*` tag (signed /
+notarized when the secrets are set) and served to the in-app updater by the
+Cloudflare Worker in `updates-worker/`. See `docs/DISTRIBUTION.md`.
 
-### Optional: Codesign & Notarize
-Set these repository secrets to enable signing and notarization:
-- `CODE_SIGN_IDENTITY` (e.g., `Developer ID Application: AtelierWorks Inc. (ABCDE12345)`)
-- `DEVELOPER_ID_APP_CERT_P12` (base64 of your `.p12`)
-- `DEVELOPER_ID_APP_CERT_PASSWORD`
-- `AC_API_KEY_ID`, `AC_API_ISSUER_ID`, `AC_API_PRIVATE_KEY` (App Store Connect API key `.p8` content)
+## History
 
-Tag example:
-```bash
-git tag v0.1.1
-git push origin v0.1.1
-```
-
-## Local signed build (optional)
-```bash
-cd bgm_deck
-export DEVELOPER_ID_APP="Developer ID Application: AtelierWorks Inc. (ABCDE12345)"
-export NOTARY_PROFILE="atelierworks-notary"  # saved via `xcrun notarytool store-credentials`
-export BUILD_NUMBER=42
-make bundle-signed
-# Outputs:
-#  - target/release/bundle/osx/BGM Deck.app (stapled if secrets/profile available)
-#  - target/release/BGM Deck.zip
-```
-
-## Troubleshooting
-- Xcode errors: run `xcode-select --install`
-- No sound: try changing the Output Device (virtual devices or mismatched sample rates can be problematic)
-- mp3 won’t load: most mp3s should work via rodio/symphonia; corrupt files will fail
-- Blank window: rare GPU issues; run with `RUST_BACKTRACE=1 cargo run` to inspect logs
-- Gatekeeper prompt (unsigned builds): right‑click → Open, or allow under Privacy & Security
-
-## Roadmap Ideas
-- Playback position/seek and loop controls
-- More hotkeys and optional global shortcuts
-- Multiple profiles (setlists)
-- Custom mixer with `cpal` (simultaneous playback, advanced fades)
+BGM Deck 0.1–0.2 (2025) was a small egui / rodio app with the same 10-slot
+idea. 0.9 is a rewrite on the playque stack: streaming engine, banks, OSC,
+native menus, updater, signed builds. Decks from the old version are not
+imported (it kept no deck files, only app settings).
 
 ## License
-TBD
+
+TBD — the app is free to use. Code license to be chosen before 1.0.
