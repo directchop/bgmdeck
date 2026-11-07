@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 — 2026-11-08
+## 0.9.0 — 2026-11-07
 
 Complete rewrite on Tauri 2 + React (previously egui / rodio).
 
