@@ -4,6 +4,7 @@
 
 ### Fixed
 - **Windows updates install the matching installer.** The app now tells the update feed whether it was installed from setup.exe (NSIS) or the MSI, so an update never leaves a second copy in Program Files. Clients without that information get setup.exe.
+- **Check for Updates no longer fails with "Could not fetch a valid release JSON"** while nothing has been published to the update feed yet; the feed now answers "no update" (204) instead of 404.
 - **Space is now an unconditional stop.** After dragging a pad fader or clicking Duck / Loop / a bank tab, focus stayed on that control and Space either did nothing or re-clicked it. Space (and Shift+Space) now stop the deck whatever has focus, except while typing in a text field, and can never start playback.
 
 ## 0.9.0 — 2026-11-07
