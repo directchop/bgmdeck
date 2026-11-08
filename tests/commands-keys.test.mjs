@@ -50,3 +50,17 @@ test("modifier shortcuts follow the platform and stay live in text fields", () =
   assert.equal(win(key("KeyY", { ctrlKey: true }), false), "edit.redo");
   assert.equal(win(key("Digit2", { ctrlKey: true }), false), "view.settings");
 });
+
+test("Space stops whatever has focus except a text field, and never maps to play", () => {
+  const map = loadCommandForKey(true);
+  // `typing` is only true for text-entry controls (see focus-guard.test.mjs).
+  assert.equal(map(key("Space"), false), "deck.stop");
+  assert.equal(map(key("Space", { shiftKey: true }), false), "deck.stopNow");
+  assert.equal(map(key("Space"), true), null);
+  for (const typing of [false, true]) {
+    for (const extra of [{}, { shiftKey: true }, { altKey: true }, { metaKey: true }, { ctrlKey: true }]) {
+      const id = map(key("Space", extra), typing);
+      assert.ok(id === null || id.startsWith("deck.stop"), `Space ${JSON.stringify(extra)} -> ${id}`);
+    }
+  }
+});

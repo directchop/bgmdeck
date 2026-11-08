@@ -73,7 +73,7 @@ a key to bind it. Defaults follow a typical pad controller (note 36 = pad 1).
 | Key | Action |
 | --- | --- |
 | `1`–`9`, `0` | Play pad (tap the playing pad again to fade it out; Shift restarts) |
-| `Space` / `Shift+Space` | Stop (fade) / Stop now |
+| `Space` / `Shift+Space` | Stop everything (fade) / Stop now. Space never starts playback and works whatever has focus, except while typing in a text field |
 | `D` | Duck on / off |
 | `[` / `]` | Previous / next bank |
 | `Tab` | Pads ⇄ Settings |

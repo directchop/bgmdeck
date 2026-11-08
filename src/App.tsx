@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { installAudioRecovery } from "./audioRecovery";
 import { oscConfigure } from "./bridge";
-import { handleShortcutKeyDown } from "./commands";
+import { handleShortcutKeyDown, handleShortcutKeyUp } from "./commands";
+import { installFocusGuard } from "./focusGuard";
 import { checkMissingFiles, installCloseGuard } from "./deckIO";
 import { installFileDrop } from "./dropFiles";
 import { installEngineSync, startEngine } from "./engineSync";
@@ -47,7 +48,13 @@ export function App() {
 
   useEffect(() => {
     window.addEventListener("keydown", handleShortcutKeyDown);
-    return () => window.removeEventListener("keydown", handleShortcutKeyDown);
+    window.addEventListener("keyup", handleShortcutKeyUp);
+    const offFocus = installFocusGuard();
+    return () => {
+      window.removeEventListener("keydown", handleShortcutKeyDown);
+      window.removeEventListener("keyup", handleShortcutKeyUp);
+      offFocus();
+    };
   }, []);
 
   // Waveform preference

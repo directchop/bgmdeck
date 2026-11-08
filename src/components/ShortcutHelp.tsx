@@ -1,7 +1,7 @@
 const SHORTCUTS: [string, string][] = [
   ["1 – 9, 0", "Play pad 1–10 (tap a playing pad again to fade it out)"],
   ["Shift + click pad", "Restart the pad from the top"],
-  ["Space", "Stop (fade)"],
+  ["Space", "Stop everything (fade). Works whatever is focused; never starts playback"],
   ["Shift + Space", "Stop now"],
   ["D", "Duck on / off"],
   ["[ / ]", "Previous / next bank"],

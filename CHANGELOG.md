@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Space is now an unconditional stop.** After dragging a pad fader or clicking Duck / Loop / a bank tab, focus stayed on that control and Space either did nothing or re-clicked it. Space (and Shift+Space) now stop the deck whatever has focus, except while typing in a text field, and can never start playback.
+
 ## 0.9.0 — 2026-11-07
 
 Complete rewrite on Tauri 2 + React (previously egui / rodio).
