@@ -1,6 +1,7 @@
 // Single dispatch point for everything the menu bar and the keyboard can
 // trigger. Menu events (`menu-command`) and keydown handlers both call
 // `runCommand`, so adding an action here makes it reachable from both.
+import { isTextEntry } from "./focusGuard";
 import { filePickAudio, openPath, openUrl } from "./bridge";
 import { CommandDeduper, type CommandSource } from "./commandDedupe";
 import { newDeck, openDeck, saveDeck } from "./deckIO";
@@ -12,10 +13,8 @@ export const DOCS_URL = "https://github.com/directchop/bgmdeck#readme";
 
 export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
-export const isTypingTarget = (el: EventTarget | null): boolean => {
-  const t = el as HTMLElement | null;
-  return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
-};
+/** Plain keys are shortcuts unless a text field has focus (see focusGuard.ts). */
+export const isTypingTarget = isTextEntry;
 
 const typing = () => isTypingTarget(typeof document === "undefined" ? null : document.activeElement);
 
@@ -220,4 +219,10 @@ export function handleShortcutKeyDown(e: KeyboardEvent): void {
   if (!id) return;
   e.preventDefault();
   runCommand(id, "key");
+}
+
+/** Space activates a focused <button> on keyup; swallow it so the panic key can
+ *  never re-click Duck / Loop / a context-menu item after it has stopped the deck. */
+export function handleShortcutKeyUp(e: KeyboardEvent): void {
+  if (e.code === "Space" && !isTypingTarget(e.target)) e.preventDefault();
 }

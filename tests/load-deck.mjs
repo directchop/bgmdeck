@@ -8,6 +8,7 @@ const ROOT = new URL("../", import.meta.url);
 
 const MODULES = [
   "src/store/types.ts",
+  "src/focusGuard.ts",
   "src/store/deck.ts",
   "src/deckFile.ts",
   "src/session.ts",
@@ -116,6 +117,7 @@ export async function loadDeck(overrides = {}, globals = {}) {
     updatePolicy: ns("src/updatePolicy.ts"),
     engineSync: ns("src/engineSync.ts"),
     deckIO: ns("src/deckIO.ts"),
+    focusGuard: ns("src/focusGuard.ts"),
   };
 }
 
