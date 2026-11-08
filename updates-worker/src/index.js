@@ -3,8 +3,9 @@
 //   GET /{target}/{arch}/{bundle_type}/{current_version}[?channel=stable|beta]  (or header x-bgmdeck-channel)
 //   GET /{target}/{arch}/{current_version}            (clients built before bundle_type was added)
 //       Tauri updater dynamic endpoint. 200 + JSON when a newer build exists
-//       for that platform, 204 when the client is current, 404 when the
-//       channel has no manifest.
+//       for that platform, 204 when the client is current or nothing has been
+//       published yet (the Tauri updater treats 404 as an error and shows
+//       "Could not fetch a valid release JSON from the remote").
 //   GET /dl/<key>      Streams an object from the R2 bucket (installers, .sig).
 //   GET /manifest/<channel>.json   The raw Tauri latest.json for a channel.
 //   GET /              Plain-text status.
@@ -139,7 +140,8 @@ export default {
         channel === "beta" ? readManifest(env, "beta") : null,
       ]);
       const manifest = pickManifest(channel, { stable, beta });
-      if (!manifest) return new Response("no manifest", { status: 404 });
+      // Nothing published yet: that is "no update", not an error.
+      if (!manifest) return new Response(null, { status: 204 });
       const r = updateFor(manifest, { target, arch, bundle, current, origin: url.origin });
       if (r.status === 200) return Response.json(r.body, { headers: { "cache-control": "no-store" } });
       if (r.status === 400) return new Response(r.error, { status: 400 });
