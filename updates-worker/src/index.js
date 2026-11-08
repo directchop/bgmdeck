@@ -1,6 +1,7 @@
 // BGM Deck update feed.
 //
-//   GET /{target}/{arch}/{current_version}[?channel=stable|beta]  (or header x-bgmdeck-channel)
+//   GET /{target}/{arch}/{bundle_type}/{current_version}[?channel=stable|beta]  (or header x-bgmdeck-channel)
+//   GET /{target}/{arch}/{current_version}            (clients built before bundle_type was added)
 //       Tauri updater dynamic endpoint. 200 + JSON when a newer build exists
 //       for that platform, 204 when the client is current, 404 when the
 //       channel has no manifest.
@@ -29,10 +30,24 @@ export function pickManifest(channel, { stable, beta }) {
   return (compareVersions(beta.version, stable.version) ?? -1) > 0 ? beta : stable;
 }
 
+/** Manifest keys to try, most specific first. Clients send their bundle type
+ *  (`{{bundle_type}}` in the endpoint: nsis / msi / app / appimage / deb / rpm)
+ *  so a setup.exe install gets the next setup.exe. Older Windows clients did
+ *  not send it; all of those were installed from the NSIS setup.exe, so prefer
+ *  it over the MSI for them. Serving the MSI to an NSIS install puts a second
+ *  copy in Program Files and the one the user launches never updates.
+ *  Exported for tests. */
+export function platformKeys(target, arch, bundle) {
+  const base = `${target}-${arch}`;
+  if (bundle && bundle !== "unknown") return [`${base}-${bundle}`, base];
+  if (target === "windows") return [`${base}-nsis`, base];
+  return [base];
+}
+
 /** Build the response for one platform from a manifest. Exported for tests. */
-export function updateFor(manifest, { target, arch, current, origin }) {
-  const key = `${target}-${arch}`;
-  const platform = manifest?.platforms?.[key];
+export function updateFor(manifest, { target, arch, bundle, current, origin }) {
+  const key = platformKeys(target, arch, bundle).find((k) => manifest?.platforms?.[k]);
+  const platform = key ? manifest.platforms[key] : null;
   if (!platform || !manifest.version) return { status: 204 };
   const cmp = compareVersions(current, manifest.version);
   if (cmp === null) return { status: 400, error: `bad version "${current}"` };
@@ -109,8 +124,11 @@ export default {
       return Response.json(manifest, { headers: { "cache-control": "no-store" } });
     }
 
-    if (parts.length === 3) {
-      const [target, arch, current] = parts.map(decodeURIComponent);
+    if (parts.length === 3 || parts.length === 4) {
+      const p = parts.map(decodeURIComponent);
+      const [target, arch] = p;
+      const bundle = parts.length === 4 ? p[2] : undefined;
+      const current = parts.length === 4 ? p[3] : p[2];
       if (!parseVersion(current)) return new Response("bad version", { status: 400 });
       // The app sends the channel as a header (Tauri's check({ headers })),
       // curl users can use ?channel=.
@@ -122,7 +140,7 @@ export default {
       ]);
       const manifest = pickManifest(channel, { stable, beta });
       if (!manifest) return new Response("no manifest", { status: 404 });
-      const r = updateFor(manifest, { target, arch, current, origin: url.origin });
+      const r = updateFor(manifest, { target, arch, bundle, current, origin: url.origin });
       if (r.status === 200) return Response.json(r.body, { headers: { "cache-control": "no-store" } });
       if (r.status === 400) return new Response(r.error, { status: 400 });
       return new Response(null, { status: 204 });
