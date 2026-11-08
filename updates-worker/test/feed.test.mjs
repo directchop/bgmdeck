@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { compareVersions } from "../src/semver.js";
-import { pickManifest, updateFor } from "../src/index.js";
+import { pickManifest, updateFor, platformKeys } from "../src/index.js";
 
 test("compareVersions orders releases and pre-releases", () => {
   assert.equal(compareVersions("0.6.0", "0.6.1"), -1);
@@ -50,4 +50,30 @@ test("beta channel serves the newer of beta/stable, stable ignores beta", () => 
   assert.equal(pickManifest("beta", { stable: null, beta }), beta);
   assert.equal(pickManifest("stable", { stable, beta }), stable);
   assert.equal(pickManifest("stable", { stable: null, beta }), null);
+});
+
+test("bundle type picks the matching installer; old Windows clients default to NSIS", () => {
+  const manifest = {
+    version: "0.6.4",
+    pub_date: "2026-11-08T00:00:00Z",
+    platforms: {
+      "windows-x86_64": { url: "https://x/playque_0.6.4_x64_en-US.msi", signature: "s-msi" },
+      "windows-x86_64-msi": { url: "https://x/playque_0.6.4_x64_en-US.msi", signature: "s-msi" },
+      "windows-x86_64-nsis": { url: "https://x/playque_0.6.4_x64-setup.exe", signature: "s-nsis" },
+      "darwin-aarch64": { url: "https://x/playque_aarch64.app.tar.gz", signature: "s-app" },
+    },
+  };
+  const origin = "https://feed.test";
+  const file = (r) => r.body.url.split("/").pop();
+  assert.deepEqual(platformKeys("windows", "x86_64", "nsis"), ["windows-x86_64-nsis", "windows-x86_64"]);
+  assert.deepEqual(platformKeys("windows", "x86_64", undefined), ["windows-x86_64-nsis", "windows-x86_64"]);
+  assert.deepEqual(platformKeys("windows", "x86_64", "unknown"), ["windows-x86_64-nsis", "windows-x86_64"]);
+  assert.deepEqual(platformKeys("darwin", "aarch64", undefined), ["darwin-aarch64"]);
+  assert.equal(file(updateFor(manifest, { target: "windows", arch: "x86_64", bundle: "nsis", current: "0.6.3", origin })), "playque_0.6.4_x64-setup.exe");
+  assert.equal(file(updateFor(manifest, { target: "windows", arch: "x86_64", bundle: "msi", current: "0.6.3", origin })), "playque_0.6.4_x64_en-US.msi");
+  assert.equal(file(updateFor(manifest, { target: "windows", arch: "x86_64", current: "0.6.3", origin })), "playque_0.6.4_x64-setup.exe");
+  assert.equal(updateFor(manifest, { target: "windows", arch: "x86_64", bundle: "nsis", current: "0.6.3", origin }).body.signature, "s-nsis");
+  // A bundle the manifest lacks falls back to the plain key.
+  assert.equal(file(updateFor(manifest, { target: "darwin", arch: "aarch64", bundle: "app", current: "0.6.3", origin })), "playque_aarch64.app.tar.gz");
+  assert.equal(updateFor(manifest, { target: "windows", arch: "x86_64", bundle: "nsis", current: "0.6.4", origin }).status, 204);
 });
